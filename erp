@@ -1,0 +1,278 @@
+// ==========================================================
+// SISTEMA VETERINÁRIO - CLIENTE: INNOVATE/VIDAVET
+// VERSÃO 14.3 - SCHEMA FINAL (FIX: SINTAXE LIMPA SEM ;)
+// ==========================================================
+
+// --- ENUMS ---
+Enum tipo_entidade { 
+  cliente_pj
+  cliente_pf
+  fazenda_propiedade_agricula
+  tecnico
+  enfermeiro
+  fornecedor
+  clinica_parceira 
+}
+
+Enum tipo_contato { 
+  celular
+  whatsapp
+  telefone_fixo
+  email_pessoal
+  email_nfe 
+}
+
+Enum tipo_endereco { 
+  residencial
+  comercial
+  cobranca
+  entrega
+  rural 
+}
+
+Enum especie_animal { 
+  canina
+  felina
+  equina
+  bovina
+  ovina
+  caprina
+  suina
+  ave
+  exotico
+  outro 
+}
+
+Enum sexo_animal { 
+  M
+  F
+  I 
+}
+
+Enum atendimento_status { 
+  agendado
+  realizado
+  cancelado 
+}
+
+Enum atendimento_tipo { 
+  consulta
+  emergencia
+  retorno
+  cirurgia
+  visita_campo 
+}
+
+Enum tipo_item_estoque { 
+  produto
+  consumivel
+  kit 
+}
+
+Enum tipo_movimentacao { 
+  entrada_compra
+  saida_venda
+  saida_procedimento
+  ajuste_perda
+  ajuste_ganho 
+}
+
+Enum fatura_status { 
+  aberta
+  fechada
+  paga
+  cancelada 
+}
+
+// ======================== TABELAS =========================
+
+Table entidades {
+  id_entidade integer [primary key, increment]
+  categoria tipo_entidade [not null]
+  id_entidade_pai integer
+  nome_razao_social varchar(150) [not null]
+  cpf_cnpj varchar(18) [unique, not null]
+  faturamento_mensal_habil boolean [default: false]
+  status boolean [default: true]
+  data_cadastro timestamp [default: `now()`]
+}
+
+Table contatos {
+  id_contato integer [primary key, increment]
+  id_entidade integer [not null]
+  tipo tipo_contato [not null]
+  valor varchar(150) [not null]
+  is_principal boolean [default: false]
+}
+
+Table enderecos {
+  id_endereco integer [primary key, increment]
+  id_entidade integer [not null]
+  tipo tipo_endereco [not null]
+  cep varchar(9) [not null]
+  logradouro varchar(150) [not null]
+  numero varchar(10) [not null]
+  complemento varchar(60)
+  bairro varchar(80) [not null]
+  cidade varchar(100) [not null]
+  estado varchar(2) [not null]
+}
+
+Table lab_especies {
+  id integer [primary key]
+  nome especie_animal [unique]
+}
+
+Table animais {
+  id_animal integer [primary key, increment]
+  id_responsavel integer [not null]
+  id_fazenda_localizacao integer
+  especie_id integer
+  nome_identificacao varchar(100) [not null]
+  sexo sexo_animal [not null]
+  ativo boolean [default: true]
+}
+
+Table atendimentos {
+  id_atendimento integer [primary key, increment]
+  id_animal integer [not null]
+  id_tecnico integer [not null]
+  id_unidade_atendimento integer
+  data_hora timestamp [not null, default: `now()`]
+  tipo_atendimento atendimento_tipo [not null]
+  status atendimento_status [default: 'realizado']
+}
+
+Table exames {
+  id integer [primary key]
+  codigo varchar [unique]
+  nome varchar
+  subarea_id integer
+  tecnica_id integer
+  material_id integer
+  prazo_entrega varchar
+  participa_combo boolean [default: false]
+}
+
+Table exame_especie_precos {
+  exame_id integer
+  especie_id integer
+  custo_operacional decimal(10,2)
+  valor_venda decimal(10,2)
+  
+  indexes {
+    (exame_id, especie_id) [pk]
+  }
+}
+
+Table tecnicas { 
+  id integer [primary key] 
+  nome varchar [unique] 
+}
+
+Table materiais { 
+  id integer [primary key] 
+  nome varchar [unique] 
+}
+
+Table areas { 
+  id integer [primary key] 
+  nome varchar 
+}
+
+Table subareas { 
+  id integer [primary key] 
+  area_id integer 
+  nome varchar 
+}
+
+Table itens_atendimento {
+  id_item_atend integer [primary key, increment]
+  atendimento_id integer [not null]
+  exame_id integer
+  especie_id integer
+  valor_aplicado decimal(10,2)
+  custo_no_periodo decimal(10,2)
+}
+
+Table itens_estoque {
+  id_item integer [primary key, increment]
+  nome varchar(100) [not null]
+  sku varchar(50) [unique]
+  tipo tipo_item_estoque [not null]
+  unidade_medida varchar(10)
+  preco_venda decimal(10,2) [not null]
+  preco_calculado boolean [default: true]
+  estoque_minimo decimal(10,2) [default: 0]
+  ativo boolean [default: true]
+}
+
+Table movimentacoes_estoque {
+  id_movimentacao integer [primary key, increment]
+  id_item integer [not null]
+  tipo tipo_movimentacao [not null]
+  quantidade decimal(10,2) [not null]
+  id_atendimento integer
+  id_entidade_origem_destino integer
+  data_hora timestamp [default: `now()`]
+  observacao text
+}
+
+Table kits_composicao {
+  id_kit_composicao integer [primary key, increment]
+  id_kit integer [not null]
+  id_item_filho integer [not null]
+  quantidade decimal(10,2) [not null]
+}
+
+Table faturas {
+  id_fatura integer [primary key, increment]
+  id_entidade integer [not null]
+  periodo_referencia date [not null]
+  status fatura_status [default: 'aberta']
+  data_emissao timestamp
+  valor_total decimal(10,2)
+}
+
+Table faturas_itens {
+  id_fatura_item integer [primary key, increment]
+  id_fatura integer [not null]
+  id_item_atendimento integer [not null]
+  valor decimal(10,2)
+}
+
+// ======================== RELAÇÕES =======================
+
+Ref: entidades.id_entidade_pai > entidades.id_entidade
+Ref: contatos.id_entidade > entidades.id_entidade
+Ref: enderecos.id_entidade > entidades.id_entidade
+
+Ref: animais.id_responsavel > entidades.id_entidade
+Ref: animais.id_fazenda_localizacao > entidades.id_entidade
+Ref: animais.especie_id > lab_especies.id
+
+Ref: atendimentos.id_animal > animais.id_animal
+Ref: atendimentos.id_tecnico > entidades.id_entidade
+Ref: atendimentos.id_unidade_atendimento > entidades.id_entidade
+
+Ref: exames.tecnica_id > tecnicas.id
+Ref: exames.material_id > materiais.id
+Ref: exames.subarea_id > subareas.id
+Ref: subareas.area_id > areas.id
+
+Ref: exame_especie_precos.exame_id > exames.id
+Ref: exame_especie_precos.especie_id > lab_especies.id
+
+Ref: itens_atendimento.atendimento_id > atendimentos.id_atendimento
+Ref: itens_atendimento.(exame_id, especie_id) > exame_especie_precos.(exame_id, especie_id)
+
+Ref: movimentacoes_estoque.id_item > itens_estoque.id_item
+Ref: movimentacoes_estoque.id_atendimento > atendimentos.id_atendimento
+Ref: movimentacoes_estoque.id_entidade_origem_destino > entidades.id_entidade
+
+Ref: kits_composicao.id_kit > itens_estoque.id_item
+Ref: kits_composicao.id_item_filho > itens_estoque.id_item
+
+Ref: faturas.id_entidade > entidades.id_entidade
+Ref: faturas_itens.id_fatura > faturas.id_fatura
+Ref: faturas_itens.id_item_atendimento > itens_atendimento.id_item_atend
